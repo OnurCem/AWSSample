@@ -19,4 +19,29 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/image_list_item_header" />
 
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/image_list_item_image"
+        android:gravity="center_vertical" >
+
+        <Button
+            android:id="@+id/like_image_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:text="Like" />
+
+        <TextView
+            android:id="@+id/image_list_item_hashtags"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_alignParentLeft="true"
+            android:layout_toLeftOf="@id/like_image_button" />
+
+    </RelativeLayout>
+
 </RelativeLayout>

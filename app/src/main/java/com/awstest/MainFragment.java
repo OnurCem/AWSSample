@@ -1,6 +1,7 @@
 package com.awstest;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -9,13 +10,17 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import com.amazonaws.services.s3.model.PutObjectResult;
+import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.util.IOUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,15 +35,16 @@ import java.util.List;
  * Created by Onur Cem on 3/25/2015.
  */
 public class MainFragment extends Fragment
-    implements ListObjectTaskListener, SaveObjectTaskListener {
+    implements ListObjectTaskListener, SaveObjectTaskListener, GetImagesTaskListener {
 
-    private static final String BUCKET_NAME = "onurcemsenel";
     private static final int REQUEST_TAKE_PHOTO = 1;
     private String mCurrentPhotoPath;
     private Uri imageUri;
     private ListView imageListView;
     private Button takePhotoButton;
+    private TextView usernameText;
     private AWSController awsCtrl;
+    private ProgressDialog progressDialog;
 
     public MainFragment() {
     }
@@ -49,8 +55,12 @@ public class MainFragment extends Fragment
         awsCtrl = new AWSController();
         awsCtrl.setListObjectTaskListener(this);
         awsCtrl.setSaveObjectTaskListener(this);
-        awsCtrl.listObjects(BUCKET_NAME);
-        awsCtrl.saveItem("", null);
+        awsCtrl.setGetImagesTaskListener(this);
+        //awsCtrl.listObjects(MainActivity.BUCKET_NAME);
+        awsCtrl.getImages(MainActivity.BUCKET_NAME);
+        progressDialog = new ProgressDialog(getActivity());
+        progressDialog.setTitle("Loading");
+        progressDialog.setMessage("Please wait...");
     }
 
     @Override
@@ -60,6 +70,9 @@ public class MainFragment extends Fragment
 
         imageListView = (ListView) rootView.findViewById(R.id.image_list);
         takePhotoButton = (Button) rootView.findViewById(R.id.take_photo_button);
+        usernameText = (TextView) rootView.findViewById(R.id.username_text);
+
+        usernameText.setText(ConstantValues.userFullname);
 
         takePhotoButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -68,10 +81,12 @@ public class MainFragment extends Fragment
             }
         });
 
+        progressDialog.show();
+
         return rootView;
     }
 
-    public void loadImages(List<Bitmap> images) {
+    public void loadImages(List<Image> images) {
         ImageListAdapter adapter = new ImageListAdapter(getActivity(), R.id.image_list, images);
         imageListView.setAdapter(adapter);
         adapter.notifyDataSetChanged();
@@ -116,45 +131,6 @@ public class MainFragment extends Fragment
         }
     }
 
-    public static Bitmap decodeSampledBitmapFromBytes(byte[] bytes,
-                                                      int reqWidth, int reqHeight) {
-
-        // First decode with inJustDecodeBounds=true to check dimensions
-        final BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
-
-        // Calculate inSampleSize
-        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
-
-        // Decode bitmap with inSampleSize set
-        options.inJustDecodeBounds = false;
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
-    }
-
-    public static int calculateInSampleSize(
-            BitmapFactory.Options options, int reqWidth, int reqHeight) {
-        // Raw height and width of image
-        final int height = options.outHeight;
-        final int width = options.outWidth;
-        int inSampleSize = 1;
-
-        if (height > reqHeight || width > reqWidth) {
-
-            final int halfHeight = height / 2;
-            final int halfWidth = width / 2;
-
-            // Calculate the largest inSampleSize value that is a power of 2 and keeps both
-            // height and width larger than the requested height and width.
-            while ((halfHeight / inSampleSize) > reqHeight
-                    && (halfWidth / inSampleSize) > reqWidth) {
-                inSampleSize *= 2;
-            }
-        }
-
-        return inSampleSize;
-    }
-
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         if (requestCode == REQUEST_TAKE_PHOTO && resultCode == Activity.RESULT_OK) {
@@ -172,17 +148,22 @@ public class MainFragment extends Fragment
     }
 
     @Override
-    public void onComplete(PutObjectResult result) {
-        awsCtrl.listObjects(BUCKET_NAME);
+    public void onComplete(String objectKey) {
+        AddHashtagFragment addHashtagFragment = new AddHashtagFragment();
+        Bundle bundle = new Bundle();
+        bundle.putString("objectKey", objectKey);
+        addHashtagFragment.setArguments(bundle);
+
+        getFragmentManager().beginTransaction()
+                .replace(R.id.container, addHashtagFragment)
+                .commit();
     }
 
     @Override
-    public void onComplete(List<byte[]> result) {
-        List<Bitmap> images = new ArrayList<>();
-
-        for (byte[] imageBytes : result) {
-            images.add(decodeSampledBitmapFromBytes(imageBytes, 400, 150));
+    public void onComplete(List<Image> result) {
+        loadImages(result);
+        if (progressDialog.isShowing()) {
+            progressDialog.dismiss();
         }
-        loadImages(images);
     }
 }

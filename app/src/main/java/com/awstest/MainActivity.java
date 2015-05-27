@@ -2,18 +2,22 @@ package com.awstest;
 
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
 
 public class MainActivity extends ActionBarActivity {
 
+    public static final String BUCKET_NAME = "onurcemsenel";
     private MainFragment mainFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Log.d("User ID", ConstantValues.userId);
 
         mainFragment = new MainFragment();
 
@@ -41,7 +45,10 @@ public class MainActivity extends ActionBarActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_refresh) {
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.container, new MainFragment())
+                    .commit();
             return true;
         }
 

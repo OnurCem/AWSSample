@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import java.util.List;
@@ -14,9 +15,10 @@ import java.util.List;
 public class ImageListAdapter extends ArrayAdapter {
 
     private Activity activity;
-    private List<Bitmap> entries;
+    private List<Image> entries;
+    AWSController awsCtrl = new AWSController();
 
-    public ImageListAdapter(Activity a, int resource, List<Bitmap> objects) {
+    public ImageListAdapter(Activity a, int resource, List<Image> objects) {
         super(a, resource);
         entries = objects;
         activity = a;
@@ -25,10 +27,12 @@ public class ImageListAdapter extends ArrayAdapter {
     public static class ViewHolder {
         protected TextView header;
         protected ImageView image;
+        protected TextView hashtags;
+        protected Button like;
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(final int position, View convertView, ViewGroup parent) {
         View v = convertView;
         final ViewHolder viewHolder;
 
@@ -39,14 +43,37 @@ public class ImageListAdapter extends ArrayAdapter {
             viewHolder = new ViewHolder();
             viewHolder.header = (TextView) v.findViewById(R.id.image_list_item_header);
             viewHolder.image = (ImageView) v.findViewById(R.id.image_list_item_image);
+            viewHolder.hashtags = (TextView) v.findViewById(R.id.image_list_item_hashtags);
+            viewHolder.like = (Button) v.findViewById(R.id.like_image_button);
 
             v.setTag(viewHolder);
         } else {
             viewHolder = (ViewHolder) v.getTag();
         }
 
-        viewHolder.header.setText("Picture Header");
-        viewHolder.image.setImageBitmap(entries.get(position));
+        String queryResult = awsCtrl.executeSQLQuerySync("SELECT COUNT(UserId) FROM LIKE_IMAGE WHERE UserId = " +
+                ConstantValues.userId + " AND ImageId = '" + entries.get(position).getId() + "'");
+
+        if (queryResult.contains("1")) {
+            viewHolder.like.setClickable(false);
+            viewHolder.like.setText("Liked");
+        } else {
+            viewHolder.like.setClickable(true);
+            viewHolder.like.setText("Like");
+
+            viewHolder.like.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    awsCtrl.likeImage(entries.get(position).getId(), ConstantValues.userId);
+                    viewHolder.like.setClickable(false);
+                    viewHolder.like.setText("Liked");
+                }
+            });
+        }
+
+        viewHolder.header.setText(entries.get(position).getUsername());
+        viewHolder.image.setImageBitmap(entries.get(position).getBitmap());
+        viewHolder.hashtags.setText(entries.get(position).getHashtags());
 
         return v;
     }
@@ -66,7 +93,7 @@ public class ImageListAdapter extends ArrayAdapter {
      * @return list item
      */
     @Override
-    public Bitmap getItem(int i) {
+    public Image getItem(int i) {
         return entries.get(i);
     }
 
